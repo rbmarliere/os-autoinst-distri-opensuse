@@ -42,18 +42,34 @@ sub run {
         }
     }
 
+    # https://github.com/openSUSE/fde-tools/blob/main/share/uefi#L73
+    # entry=$(efibootmgr | grep BootCurrent|awk '{print $2;}')
+    # file=$(efibootdump "Boot$entry" | sed 's/.*File(\([^)]*\)).*/\1/;t;d' | tr '\\' /)
+
     if (is_transactional) {
-        if (get_var('FLAVOR') =~ m/-encrypted/i) {
-            record_soft_failure("bsc#1228126: Encrypted image fails to boot after reinstalling bootloader");
-        }
-        else {
-            trup_call 'run pbl --install';
-            check_reboot_changes;
-        }
-        trup_call 'run pbl --config';
+        trup_call 'run pbl --install';
+        trup_call '--continue run pbl --config';
+        trup_call '--continue run fdectl tpm-authorize';
+
+        # script_run('mkdir /boot/efi/EFI/sl');
+        script_run('cp /boot/efi/EFI/BOOT/sealed.tpm /boot/efi/EFI/sl');
+
+        record_info("blkid", script_output("blkid"));
+        record_info("lsblk", script_output("lsblk"));
+        record_info("efi", script_output("efibootmgr"));
+        record_info("boot", script_output("find /boot/efi"));
+        record_info("mount", script_output("mount"));
+        record_info("btrfs1", script_output("btrfs subvolume show /boot/grub2/x86_64-efi"));
+        record_info("btrfs2", script_output("btrfs filesystem show"));
+        upload_logs('/etc/fstab');
+        upload_logs('/boot/efi/EFI/BOOT/grub.cfg');
+        upload_logs('/boot/efi/EFI/sl/grub.cfg');
+        upload_logs('/boot/efi/EFI/sl/boot.csv');
+        upload_logs('/boot/grub2/grub.cfg');
+        upload_logs('/var/log/pbl.log');
+
         check_reboot_changes;
-    }
-    else {
+    } else {
         assert_script_run 'pbl --install';
         assert_script_run 'pbl --config';
         power_action('reboot', textmode => 1);
