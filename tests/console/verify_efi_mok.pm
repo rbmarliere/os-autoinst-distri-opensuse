@@ -280,7 +280,7 @@ sub run {
     is_efi_boot or die "Image did not boot in UEFI mode!\n";
 
     my $pkgs = 'efivar mokutil';
-    $pkgs .= ' dosfstools' if (is_leap('<15.2') || is_sle('<15-sp2'));
+    $pkgs .= ' dosfstools' if (is_leap('<15.2') || is_sle('<15-sp2') || is_opensuse);
     $pkgs .= ' pesign' unless get_var('DISABLE_SECUREBOOT', 0);
     zypper_call "in $pkgs";
 
