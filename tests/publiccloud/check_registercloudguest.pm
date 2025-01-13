@@ -36,6 +36,11 @@ sub run {
         $instance = $self->{my_instance} = $provider->create_instance(check_guestregister => is_openstack ? 0 : 1);
     }
 
+    if (get_var('SCC_ADDONS', '') =~ /\bltss\b/) {
+        my $remote = $instance->username . '@' . $instance->public_ip;
+        register_addon($remote, 'ltss');
+    }
+
     if (check_var('PUBLIC_CLOUD_SCC_ENDPOINT', 'SUSEConnect')) {
         record_info('SKIP', 'PUBLIC_CLOUD_SCC_ENDPOINT is hardcoded to SUSEConnect - skipping registration testing. Falling back to registration module behavior');
         registercloudguest($instance) if (is_byos() || get_var('PUBLIC_CLOUD_FORCE_REGISTRATION'));
