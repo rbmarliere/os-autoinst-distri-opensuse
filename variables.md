@@ -480,8 +480,8 @@ INJECT_INFO='<line-number> xtrace | string | | A special inject code is to set x
 SCC REGCODES: registering product modules in SCC
 Variable        | Type      | Default value | Details
 ---             | ---       | ---           | ---
-SCC_RECGODE_LTSS | string | | This will hold the registration code for activating the product SLES-LTSS
-SCC_RECGODE_LTSS_ES | string | | This will hold the registration code for activating the product SLES-LTSS-Extended-Security
+SCC_REGCODE_LTSS | string | | This will hold the registration code for activating the product SLES-LTSS
+SCC_REGCODE_LTSS_ES | string | | This will hold the registration code for activating the product SLES-LTSS-Extended-Security
 
 ### Agama specific variables
 
