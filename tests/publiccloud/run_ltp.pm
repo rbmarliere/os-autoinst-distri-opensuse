@@ -180,6 +180,8 @@ sub run {
     $cmd .= '--env ' . $env . ' ' if ($env);
 
     record_info('LTP START', 'Command launch');
+    record_info('LTP TRIGGER CRASH', '');
+    $instance->run_ssh_command(cmd => "echo c | sudo tee /proc/sysrq-trigger");
     script_run($cmd, timeout => get_var('LTP_TIMEOUT', 30 * 60));
     record_info('LTP END', 'tests done');
 }
