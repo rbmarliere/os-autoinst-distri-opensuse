@@ -176,7 +176,7 @@ sub setup_env {
         set_var('INSTLANG', 'en_US');
     }
 
-    set_var('LTP_KNOWN_ISSUES', 'https://raw.githubusercontent.com/openSUSE/kernel-qe/main/ltp_known_issues.yaml') if is_opensuse and !get_var('LTP_KNOWN_ISSUES');
+    set_var('LTP_KNOWN_ISSUES', 'https://raw.githubusercontent.com/openSUSE/kernel-qe/main/ltp_known_issues.yaml') if (is_opensuse or is_jeos) and !get_var('LTP_KNOWN_ISSUES');
 
     # By default format DASD devices before installation
     if (is_backend_s390x) {
