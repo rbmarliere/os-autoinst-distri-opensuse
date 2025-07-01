@@ -60,6 +60,7 @@ sub loadtest_runltp {
 
 sub shutdown_ltp {
     loadtest_kernel('proc_sys_dump') if get_var('PROC_SYS_DUMP');
+    autotest::loadtest("tests/console/journal_check.pm", @_);
     loadtest_kernel('shutdown_ltp', @_);
 }
 
