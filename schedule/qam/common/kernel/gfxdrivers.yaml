@@ -27,4 +27,5 @@ schedule:
 - x11/glxgears
 - kernel/usb_nic
 - kernel/usb_drive
-- shutdown/shutdown
+- console/journal_check
+- kernel/shutdown_ltp
