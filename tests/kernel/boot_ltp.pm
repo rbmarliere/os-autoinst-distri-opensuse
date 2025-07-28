@@ -75,6 +75,7 @@ sub run {
 
     check_kernel_taint($self, 1);
     prepare_ltp_env;
+    sleep(3600);
     init_ltp_tests($cmd_file);
 
     # If the command file (runtest file) is set then we dynamically schedule
