@@ -357,7 +357,7 @@ sub run {
         script_run('(pidstat -p ALL 1 > /tmp/pidstat.txt &)');
         install_from_git();
 
-        install_runtime_dependencies_network;
+        # install_runtime_dependencies_network;
         install_debugging_tools;
     }
     else {
