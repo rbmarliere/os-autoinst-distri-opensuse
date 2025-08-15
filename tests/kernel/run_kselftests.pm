@@ -17,6 +17,7 @@
 
 use base 'opensusebasetest';
 
+use Data::Dumper;
 use testapi;
 use serial_terminal 'select_serial_terminal';
 use registration;
@@ -74,6 +75,8 @@ sub post_process {
         $test_index++;
         my $test_name = $test =~ s/^\w+://r;    # Remove the $collection from it
 
+        my $known_issue = $whitelist->find_whitelist_entry($env, $collection, $test_name);
+
         # Check test result in the summary
         my $summary_ln;
         while ($summary_ln_idx < @summary) {
@@ -81,7 +84,7 @@ sub post_process {
             $summary_ln_idx++;
             if ($summary_ln =~ /^(not )?ok \d+ selftests: \S+: \S+/) {
                 my $test_failed = $summary_ln =~ /^not ok/ ? 1 : 0;
-                if ($test_failed && $whitelist->find_whitelist_entry($env, $collection, $test_name)) {
+                if ($test_failed && $known_issue) {
                     $self->{result} = 'softfail';
                     record_info("Known Issue", "$test marked as softfail");
                     $summary_ln = "ok $test_index selftests: $collection: $test_name # TODO Known Issue";
@@ -102,7 +105,14 @@ sub post_process {
             if ($test_ln =~ /^# not ok (\d+) (\S+)/) {
                 my $subtest_idx = $1;
                 my $subtest_name = $2;
-                if ($whitelist->find_whitelist_entry($env, $collection, $subtest_name)) {
+                record_info("known issue", Dumper(\$known_issue));
+                record_info("known issue", Dumper(\$known_issue->{subtests}));
+                record_info("known issue", Dumper(\$known_issue->{subtests}->{$subtest_name}));
+                my $subissue = $whitelist->find_whitelist_entry($env, $collection, $subtest_name);
+                if ($subissue) {
+                    record_info("sub known issue", Dumper(\$subissue->{patterns}));
+                    my $subissue2 = $known_issue->{subtests}->{$subtest_name};
+                    record_info("PATTERNS", Dumper(\$subissue2->{patterns}));
                     $self->{result} = 'softfail';
                     record_info("Known Issue", "$test:$subtest_name marked as softfail");
                     $test_ln = "# ok $subtest_idx $subtest_name # TODO Known Issue";
