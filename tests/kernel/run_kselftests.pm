@@ -150,13 +150,11 @@ sub run {
     my @all_tests = split(/\n/, script_output("./run_kselftest.sh --list | grep '^$collection'"));
 
     # Filter which tests will run using KSELFTEST_TESTS
-    my @tests = split /,/, get_var('KSELFTEST_TESTS', '');
-    if (!@tests) {
-        @tests = @all_tests;
-    }
+    my @tests = @{get_var_array('KSELFTEST_TESTS')};
+    @tests = @all_tests unless @tests;
 
     # Filter which tests will *NOT* run using KSELFTEST_SKIP
-    my @skip = split /,/, get_var('KSELFTEST_SKIP', '');
+    my @skip = @{get_var_array('KSELFTEST_SKIP')};
     if (@skip) {
         my %skip = map { $_ => 1 } @skip;
         # Remove tests that are in @skip
