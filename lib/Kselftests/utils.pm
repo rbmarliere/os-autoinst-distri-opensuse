@@ -116,7 +116,7 @@ sub install_kselftests
 sub get_sanitized_test_name {
     my $test = shift;
     my $test_name = $test =~ s/^\w+://r;    # Remove the collection from it, sub . with _
-    my $sanitized_test_name = $test_name =~ s/\.|-/_/gr;    # Dots and hyphens should be underscore for better handling in Perl and YAML files
+    my $sanitized_test_name = $test_name =~ s/[.-]/_/gr;    # Dots and hyphens should be underscore for better handling in Perl and YAML files
     return ($test_name, $sanitized_test_name);
 }
 
