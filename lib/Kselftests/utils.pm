@@ -49,6 +49,19 @@ sub install_from_git
     script_run("cp tools/testing/selftests/$collection/config* tools/testing/selftests/kselftest_install/$collection");
 }
 
+sub install_from_src
+{
+    my ($collection) = @_;
+
+    zypper_call('in kernel-devel kernel-source');
+
+    my $version = script_output('uname -r');
+    my $source = "/lib/modules/$version/source";
+    my $build = "/lib/modules/$version/build";
+
+    assert_script_run("make -j `nproc` -C $source/tools/testing/selftests install SKIP_TARGETS= TARGETS=$collection O=$build", 7200);
+}
+
 sub install_from_repo
 {
     zypper_ar(get_required_var('KSELFTEST_REPO'), name => 'kselftests', priority => 1, no_gpg_check => 1);
@@ -108,6 +121,9 @@ sub install_kselftests
     if (get_var('KSELFTEST_FROM_GIT', 0)) {
         install_from_git($collection);
         assert_script_run("cd ./tools/testing/selftests/kselftest_install");
+    } elsif (get_var('KSELFTEST_FROM_SRC', 0)) {
+        install_from_src($collection);
+        assert_script_run("cd /lib/modules/`uname -r`/build/kselftest/kselftest_install");
     } else {
         install_from_repo();
         assert_script_run("cd /usr/share/kselftests");
