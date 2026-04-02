@@ -100,6 +100,11 @@ sub install_dependencies
         add_suseconnect_product(get_addon_fullname('phub'));
     }
 
+    if ($collection eq 'namespaces') {
+        # install build deps
+        install_package('libcap-devel', trup_continue => 1);
+    }
+
     if ($collection eq 'net') {
         my $netutils_repo = 'https://download.opensuse.org/repositories/network:/utilities/openSUSE_Factory/network:utilities.repo';
         if (is_sle('<16')) {
