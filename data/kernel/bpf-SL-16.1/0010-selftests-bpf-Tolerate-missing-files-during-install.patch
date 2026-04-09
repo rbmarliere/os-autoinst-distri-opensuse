@@ -1,0 +1,41 @@
+From 6ef15b30d2c2d6fb7421f68461e5de4dbe383b69 Mon Sep 17 00:00:00 2001
+From: "Ricardo B. Marlière" <rbm@suse.com>
+Date: Wed, 1 Apr 2026 10:37:37 -0300
+Subject: [PATCH 10/10] selftests/bpf: Tolerate missing files during install
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+With partial builds, some TEST_GEN_FILES entries can be absent at install
+time. rsync treats missing source arguments as fatal and aborts kselftest
+installation.
+
+Override INSTALL_SINGLE_RULE in selftests/bpf to use --ignore-missing-args,
+while keeping the existing bpf-specific INSTALL_RULE extension logic.
+
+Signed-off-by: Ricardo B. Marlière <rbm@suse.com>
+---
+ tools/testing/selftests/bpf/Makefile | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/tools/testing/selftests/bpf/Makefile b/tools/testing/selftests/bpf/Makefile
+index 881765179937..440fda02d237 100644
+--- a/tools/testing/selftests/bpf/Makefile
++++ b/tools/testing/selftests/bpf/Makefile
+@@ -894,6 +894,13 @@ EXTRA_CLEAN := $(SCRATCH_DIR) $(HOST_SCRATCH_DIR)			\
+ # Delete partially updated (corrupted) files on error
+ .DELETE_ON_ERROR:
+ 
++# Some generated files might be absent when only a subset of BPF objects
++# could be built. Tell rsync to ignore missing source arguments.
++override define INSTALL_SINGLE_RULE
++	$(if $(INSTALL_LIST),@mkdir -p $(INSTALL_PATH))
++	$(if $(INSTALL_LIST),rsync -a --copy-unsafe-links --ignore-missing-args $(INSTALL_LIST) $(INSTALL_PATH)/)
++endef
++
+ DEFAULT_INSTALL_RULE := $(INSTALL_RULE)
+ override define INSTALL_RULE
+ 	$(DEFAULT_INSTALL_RULE)
+-- 
+2.53.0
+

@@ -100,6 +100,18 @@ sub install_dependencies
         add_suseconnect_product(get_addon_fullname('phub'));
     }
 
+    if ($collection eq 'bpf') {
+        # install build deps
+        install_package('clang llvm-devel lld python3-docutils rsync', trup_continue => 1);
+        if (is_sle()) {
+            my $patch_dir = get_var('CASEDIR') . '/data/kernel/bpf-SL-16.1';
+            for my $patch (sort glob("$patch_dir/*.patch")) {
+                assert_script_run("curl -O " . autoinst_url("/data/kernel/bpf-SL-16.1/" . basename($patch)));
+                assert_script_run("git apply " . basename($patch));
+            }
+        }
+    }
+
     if ($collection eq 'namespaces') {
         # install build deps
         install_package('libcap-devel', trup_continue => 1);

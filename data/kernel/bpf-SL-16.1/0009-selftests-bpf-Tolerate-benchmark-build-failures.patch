@@ -1,0 +1,48 @@
+From 64eb6eea9307f3465917f0273921f28b5db69ece Mon Sep 17 00:00:00 2001
+From: "Ricardo B. Marlière" <rbm@suse.com>
+Date: Wed, 1 Apr 2026 10:37:14 -0300
+Subject: [PATCH 09/10] selftests/bpf: Tolerate benchmark build failures
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Benchmark objects depend on skeletons that may be missing when some BPF
+programs fail to build. In that case, benchmark object compilation or final
+bench linking should not abort the full selftests/bpf build.
+
+Keep both steps non-fatal, emit SKIP-BENCH or SKIP-LINK, and remove failed
+outputs so stale objects or binaries are not reused by later incremental
+builds.
+
+Signed-off-by: Ricardo B. Marlière <rbm@suse.com>
+---
+ tools/testing/selftests/bpf/Makefile | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/tools/testing/selftests/bpf/Makefile b/tools/testing/selftests/bpf/Makefile
+index ae7a4f270d2a..881765179937 100644
+--- a/tools/testing/selftests/bpf/Makefile
++++ b/tools/testing/selftests/bpf/Makefile
+@@ -819,7 +819,8 @@ $(OUTPUT)/test_cpp: test_cpp.cpp $(OUTPUT)/test_core_extern.skel.h $(BPFOBJ)
+ # Benchmark runner
+ $(OUTPUT)/bench_%.o: benchs/bench_%.c bench.h $(BPFOBJ)
+ 	$(call msg,CC,,$@)
+-	$(Q)$(CC) $(CFLAGS) -O2 -c $(filter %.c,$^) $(LDLIBS) -o $@
++	$(Q)$(CC) $(CFLAGS) -O2 -c $(filter %.c,$^) $(LDLIBS) -o $@ || \
++		($(RM) $@; printf '  %-12s %s\n' 'SKIP-BENCH' '$(notdir $@)' 1>&2)
+ $(OUTPUT)/bench_rename.o: $(OUTPUT)/test_overhead.skel.h
+ $(OUTPUT)/bench_trigger.o: $(OUTPUT)/trigger_bench.skel.h
+ $(OUTPUT)/bench_ringbufs.o: $(OUTPUT)/ringbuf_bench.skel.h \
+@@ -860,7 +861,8 @@ $(OUTPUT)/bench: $(OUTPUT)/bench.o \
+ 		 $(OUTPUT)/bench_lpm_trie_map.o \
+ 		 #
+ 	$(call msg,BINARY,,$@)
+-	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) $(filter %.a %.o,$^) $(LDLIBS) -o $@
++	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) $(filter %.a %.o,$(wildcard $^)) $(LDLIBS) -o $@ || \
++		($(RM) $@; printf '  %-12s %s\n' 'SKIP-LINK' '$(notdir $@) (some benchmarks may have been skipped)' 1>&2)
+ 
+ # This works around GCC warning about snprintf truncating strings like:
+ #
+-- 
+2.53.0
+
