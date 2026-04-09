@@ -1,0 +1,106 @@
+From 9e51aeecc054648c5a448689d745d2dd58decc48 Mon Sep 17 00:00:00 2001
+From: "Ricardo B. Marlière" <rbm@suse.com>
+Date: Mon, 30 Mar 2026 11:48:45 -0300
+Subject: [PATCH 08/10] selftests/bpf: Provide weak definitions for cross-test
+ functions
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Some test files reference functions defined in other test translation
+units. When those units are not compiled (e.g. because a BPF skeleton
+could not be generated), the link step fails with undefined references.
+
+Replace forward declarations with weak stub definitions for:
+
+ - uprobe_multi_func_{1,2,3}() in bpf_cookie.c (defined in
+   uprobe_multi_test.c)
+ - stack_mprotect() in bpf_cookie.c and iters.c (defined in test_lsm.c)
+
+The linker will prefer the strong definitions from the original objects
+when they are present, and fall back to the stubs otherwise.
+
+The uprobe stubs are marked noinline because uprobe_multi_test_run()
+takes their addresses directly to configure the BPF program's uprobe
+attachment points. An inlined function has no stable address in the
+binary, which would cause the attachment to probe the wrong location.
+
+Signed-off-by: Ricardo B. Marlière <rbm@suse.com>
+---
+ .../selftests/bpf/prog_tests/bpf_cookie.c     | 24 +++++++++++++++----
+ .../testing/selftests/bpf/prog_tests/iters.c  | 10 +++++++-
+ 2 files changed, 28 insertions(+), 6 deletions(-)
+
+diff --git a/tools/testing/selftests/bpf/prog_tests/bpf_cookie.c b/tools/testing/selftests/bpf/prog_tests/bpf_cookie.c
+index 75f4dff7d042..96f8ccd5d608 100644
+--- a/tools/testing/selftests/bpf/prog_tests/bpf_cookie.c
++++ b/tools/testing/selftests/bpf/prog_tests/bpf_cookie.c
+@@ -241,10 +241,17 @@ static void kprobe_multi_attach_api_subtest(void)
+ 	kprobe_multi__destroy(skel);
+ }
+ 
+-/* defined in prog_tests/uprobe_multi_test.c */
+-void uprobe_multi_func_1(void);
+-void uprobe_multi_func_2(void);
+-void uprobe_multi_func_3(void);
++/*
++ * Weak uprobe target stubs. noinline is required because
++ * uprobe_multi_test_run() takes their addresses to configure the BPF
++ * program's attachment points; an inlined function has no stable
++ * address in the binary to probe. The strong definitions in
++ * uprobe_multi_test.c take precedence when that translation unit is
++ * linked.
++ */
++noinline __weak void uprobe_multi_func_1(void) {}
++noinline __weak void uprobe_multi_func_2(void) {}
++noinline __weak void uprobe_multi_func_3(void) {}
+ 
+ static void uprobe_multi_test_run(struct uprobe_multi *skel)
+ {
+@@ -561,7 +568,14 @@ static void tracing_subtest(struct test_bpf_cookie *skel)
+ 		close(fmod_ret_fd);
+ }
+ 
+-int stack_mprotect(void);
++/*
++ * Weak stub for stack_mprotect(); the real definition lives in
++ * test_lsm.c and takes precedence when that object is linked in.
++ */
++__weak int stack_mprotect(void)
++{
++	return 0;
++}
+ 
+ static void lsm_subtest(struct test_bpf_cookie *skel)
+ {
+diff --git a/tools/testing/selftests/bpf/prog_tests/iters.c b/tools/testing/selftests/bpf/prog_tests/iters.c
+index 3cea71f9c500..d690859d2e81 100644
+--- a/tools/testing/selftests/bpf/prog_tests/iters.c
++++ b/tools/testing/selftests/bpf/prog_tests/iters.c
+@@ -7,6 +7,7 @@
+ #include <unistd.h>
+ #include <malloc.h>
+ #include <stdlib.h>
++#include <linux/compiler.h>
+ #include <test_progs.h>
+ #include "cgroup_helpers.h"
+ 
+@@ -202,7 +203,14 @@ static void subtest_task_iters(void)
+ 	iters_task__destroy(skel);
+ }
+ 
+-extern int stack_mprotect(void);
++/*
++ * Weak stub for stack_mprotect(); the real definition lives in
++ * test_lsm.c and takes precedence when that object is linked in.
++ */
++__weak int stack_mprotect(void)
++{
++	return 0;
++}
+ 
+ static void subtest_css_task_iters(void)
+ {
+-- 
+2.53.0
+

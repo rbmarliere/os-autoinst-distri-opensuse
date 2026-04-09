@@ -1,0 +1,36 @@
+From 80df00af4a9c3dfdcd13827f807f9cb9c06bf821 Mon Sep 17 00:00:00 2001
+From: "Ricardo B. Marlière" <rbm@suse.com>
+Date: Wed, 1 Apr 2026 10:36:39 -0300
+Subject: [PATCH 03/10] selftests/bpf: Avoid rebuilds when running emit_tests
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+emit_tests is used while installing selftests to generate the kselftest
+list. Pulling in .d files for this goal can trigger BPF rebuild rules and
+mix build output into list generation.
+
+Skip dependency file inclusion for emit_tests, like clean goals, so list
+generation stays side-effect free.
+
+Signed-off-by: Ricardo B. Marlière <rbm@suse.com>
+---
+ tools/testing/selftests/bpf/Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/tools/testing/selftests/bpf/Makefile b/tools/testing/selftests/bpf/Makefile
+index 412343939bcf..318456e0db04 100644
+--- a/tools/testing/selftests/bpf/Makefile
++++ b/tools/testing/selftests/bpf/Makefile
+@@ -685,7 +685,7 @@ $(TRUNNER_TEST_OBJS:.o=.d): $(TRUNNER_OUTPUT)/%.test.d:			\
+ 			    $(TRUNNER_BPF_SKELS_LINKED)			\
+ 			    $$(BPFOBJ) | $(TRUNNER_OUTPUT)
+ 
+-ifeq ($(filter clean docs-clean,$(MAKECMDGOALS)),)
++ifeq ($(filter clean docs-clean emit_tests,$(MAKECMDGOALS)),)
+ include $(wildcard $(TRUNNER_TEST_OBJS:.o=.d))
+ endif
+ 
+-- 
+2.53.0
+

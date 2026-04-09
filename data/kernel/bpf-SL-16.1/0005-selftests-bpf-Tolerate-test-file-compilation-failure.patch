@@ -1,0 +1,44 @@
+From a0c28beddf17c13219f86ac42ba3164fec46bb6d Mon Sep 17 00:00:00 2001
+From: "Ricardo B. Marlière" <rbm@suse.com>
+Date: Mon, 30 Mar 2026 11:47:16 -0300
+Subject: [PATCH 05/10] selftests/bpf: Tolerate test file compilation failures
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Individual test files may fail to compile when headers or kernel features
+required by that test are absent. Currently this aborts the entire build.
+
+Make the per-test compilation non-fatal: remove the output object on
+failure and print a SKIP-TEST marker to stderr. Guard the BTFIDS
+post-processing step so it is skipped when the object file is absent.
+The linker step will later ignore absent objects, allowing the remaining
+tests to build and run.
+
+Use plain printf and $(Q) instead of $(call msg,...) in the BTFIDS block:
+the msg macro expands to @printf which is a make-recipe construct and is
+invalid as a shell command inside an if-then-fi body; $(Q) restores
+echo suppression at the recipe level where it is meaningful.
+
+Signed-off-by: Ricardo B. Marlière <rbm@suse.com>
+---
+ tools/testing/selftests/bpf/Makefile | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/tools/testing/selftests/bpf/Makefile b/tools/testing/selftests/bpf/Makefile
+index f56c6bebf2e6..459920d3f6e2 100644
+--- a/tools/testing/selftests/bpf/Makefile
++++ b/tools/testing/selftests/bpf/Makefile
+@@ -664,7 +664,8 @@ $(TRUNNER_TEST_OBJS): $(TRUNNER_OUTPUT)/%.test.o:			\
+ 		      $(TRUNNER_TESTS_DIR)/%.c				\
+ 		      | $(TRUNNER_OUTPUT)/%.test.d
+ 	$$(call msg,TEST-OBJ,$(TRUNNER_BINARY),$$@)
+-	$(Q)cd $$(@D) && $$(CC) -I. $$(CFLAGS) -MMD -MT $$@ -c $(CURDIR)/$$< $$(LDLIBS) -o $$(@F)
++	$(Q)cd $$(@D) && $$(CC) -I. $$(CFLAGS) -MMD -MT $$@ -c $(CURDIR)/$$< $$(LDLIBS) -o $$(@F) || \
++		($(RM) $$(@F); printf '  %-12s %s\n' 'SKIP-TEST' '$$(notdir $$@)' 1>&2)
+ 
+ $(TRUNNER_TEST_OBJS:.o=.d): $(TRUNNER_OUTPUT)/%.test.d:			\
+ 			    $(TRUNNER_TESTS_DIR)/%.c			\
+-- 
+2.53.0
+

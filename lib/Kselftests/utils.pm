@@ -15,7 +15,7 @@ use warnings;
 use utils;
 use Kselftests::parser;
 use LTP::WhiteList;
-use version_utils qw(is_sle);
+use version_utils qw(is_sle is_tumbleweed);
 use base 'opensusebasetest';
 use File::Basename qw(basename);
 use repo_tools qw(add_qa_head_repo);
@@ -39,6 +39,27 @@ sub build
     my $build_dir = "/lib/modules/$version/build";
 
     zypper_call('install -t pattern --recommends devel_kernel');    # no trup support for now
+
+    my $patch_dir;
+    if ($targets eq 'bpf') {
+        if (is_sle()) {
+            $patch_dir = '/data/kernel/bpf-SL-16.1';
+        } elsif (is_tumbleweed()) {
+            $patch_dir = '/data/kernel/tumbleweed';
+        }
+    }
+    if ($patch_dir) {
+        for my $patch (sort glob(get_var('CASEDIR') . "$patch_dir/*.patch")) {
+            my $patch_name = basename($patch);
+            assert_script_run("curl -o /tmp/$patch_name " . autoinst_url($patch_dir . '/' . $patch_name));
+            assert_script_run("git -C $source_dir apply /tmp/$patch_name");
+        }
+        if (is_tumbleweed()) {
+            assert_script_run("xz -d /lib/modules/$version/vmlinux.xz");
+            assert_script_run("ln -sf /lib/modules/$version/vmlinux $build_dir/vmlinux");
+        }
+    }
+
     my $build_env = get_var('KSELFTEST_BUILD_ENV', '');
     my $make_cmd = "make -j\$(getconf _NPROCESSORS_ONLN) -C $source_dir/tools/testing/selftests install SKIP_TARGETS= TARGETS=$targets O=$build_dir $build_env";
     $make_cmd =~ s/\s+$//;
@@ -98,6 +119,11 @@ sub install_dependencies
     if (is_sle() && $collection ne 'cgroup') {
         add_qa_head_repo;
         add_suseconnect_product(get_addon_fullname('phub'));
+    }
+
+    if ($collection eq 'bpf') {
+        # install build deps
+        install_package('clang llvm-devel lld python3-docutils rsync', trup_continue => 1);
     }
 
     if ($collection eq 'namespaces') {

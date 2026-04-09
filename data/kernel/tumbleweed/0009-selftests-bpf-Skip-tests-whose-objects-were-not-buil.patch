@@ -1,0 +1,49 @@
+From 589d5147468156576ee89713f1468892ad4af5f6 Mon Sep 17 00:00:00 2001
+From: "Ricardo B. Marlière" <rbm@suse.com>
+Date: Mon, 30 Mar 2026 11:49:52 -0300
+Subject: [PATCH 09/10] selftests/bpf: Skip tests whose objects were not built
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+When Kconfig options or missing headers cause a .test.o not to be
+compiled, the corresponding prog_test_def entry in tests.h has NULL
+for both run_test and run_serial_test. The existing infrastructure
+check treats this case as a fatal coding error and calls exit().
+
+Separate the two failure modes: having both function pointers non-NULL
+is a genuine coding error and remains fatal. Having both NULL means
+the test object was intentionally omitted from the build; mark it
+should_run=false and continue so that the remaining tests are
+unaffected.
+
+Signed-off-by: Ricardo B. Marlière <rbm@suse.com>
+---
+ tools/testing/selftests/bpf/test_progs.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/tools/testing/selftests/bpf/test_progs.c b/tools/testing/selftests/bpf/test_progs.c
+index 02a85dda30e6..08ba26cd06d3 100644
+--- a/tools/testing/selftests/bpf/test_progs.c
++++ b/tools/testing/selftests/bpf/test_progs.c
+@@ -2006,12 +2006,15 @@ int main(int argc, char **argv)
+ 		test->should_run = should_run(&env.test_selector,
+ 					      test->test_num, test->test_name);
+ 
+-		if ((test->run_test == NULL && test->run_serial_test == NULL) ||
+-		    (test->run_test != NULL && test->run_serial_test != NULL)) {
++		if (test->run_test && test->run_serial_test) {
+ 			fprintf(stderr, "Test %d:%s must have either test_%s() or serial_test_%sl() defined.\n",
+ 				test->test_num, test->test_name, test->test_name, test->test_name);
+ 			exit(EXIT_ERR_SETUP_INFRA);
+ 		}
++		if (!test->run_test && !test->run_serial_test) {
++			test->should_run = false;
++			continue;
++		}
+ 		if (test->should_run)
+ 			test->should_tmon = should_tmon(&env.tmon_selector, test->test_name);
+ 	}
+-- 
+2.53.0
+
