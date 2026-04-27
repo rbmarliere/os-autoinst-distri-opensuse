@@ -25,6 +25,24 @@ sub run {
 
     my $collection = get_required_var('KSELFTEST_COLLECTION');
     install_kselftests($collection);
+
+    # Apply upstream selftest fixes that may not be present in the running kernel yet.
+    # install_kselftests() leaves CWD at the kselftest install root, so -p4 strips
+    # "tools/testing/selftests/" and lands on the correct relative path (e.g. net/fib_nexthops.sh).
+    my @patches;
+    if ($collection =~ m{^net(/|$)}) {
+        # 465b210fdc65 selftests: fib_nexthops: do not mark skipped tests as failed
+        # Old log_test() incremented nfail and set ret=1 even for SKIP results, causing
+        # the script to exit 1 instead of 4 when only skips occurred (no real failures).
+        push @patches, 'selftests-net-fib_nexthops-do-not-mark-skipped-tests-as-failed.patch';
+    }
+    for my $patch (@patches) {
+        assert_script_run("curl -o /tmp/$patch " . autoinst_url("/data/kernel/$patch"));
+        # -N: skip forward (do not apply if already present); tolerate exit!=0 on newer kernels
+        if (script_run("patch -p4 --fuzz 0 -N -r - < /tmp/$patch", timeout => 30) == 0) {
+            record_info('Selftest patch', "Applied $patch");
+        }
+    }
 }
 
 1;
