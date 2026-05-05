@@ -417,6 +417,7 @@ sub install_kotd {
     my $devel_flavor = get_kernel_devel_flavor;
     my $src_flavor = get_kernel_source_flavor;
     fully_patch_system;
+    zypper_call('rl kernel-default kernel-default-base') if get_var('REMOVE_KERNEL_LOCK');
     remove_kernel_packages;
     zypper_ar($repo, name => 'KOTD', priority => 90, no_gpg_check => 1);
     install_package("-r KOTD $kernel_flavor", trup_continue => 1);
@@ -668,3 +669,10 @@ means that they will be used during preparatory system update.
 
 When NVIDIA_FIRST_RELEASE evaluates to true, install nvidia driver directly
 from incident repository and update system.
+
+=head2 REMOVE_KERNEL_LOCK
+
+When set, remove zypper locks on kernel-default and kernel-default-base
+before removing kernel packages in the KOTD install path. Required when a
+prior job (e.g. install_ltp) has locked those packages to prevent accidental
+kernel updates and the downstream job needs to replace the kernel.
