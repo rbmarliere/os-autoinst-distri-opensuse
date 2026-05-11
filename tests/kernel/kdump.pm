@@ -16,6 +16,7 @@ sub run {
     select_console('root-console');
     configure_service(test_type => 'function', yast_interface => 'cli');
     check_function(test_type => 'function');
+    check_crash_no_args;
 
 }
 

@@ -20,7 +20,7 @@ use virt_autotest::utils 'is_xen_host';
 
 our @EXPORT = qw(install_kernel_debuginfo prepare_for_kdump
   activate_kdump activate_kdump_cli activate_kdump_without_yast activate_kdump_transactional
-  kdump_is_active do_kdump configure_service check_function
+  kdump_is_active do_kdump configure_service check_function check_crash_no_args
   full_kdump_check deactivate_kdump_cli set_kdump_config);
 
 sub determine_kernel_debuginfo_package {
@@ -500,6 +500,22 @@ sub check_function {
         $self->wait_boot(bootloader_time => 300);
         select_console 'root-console';
     }
+}
+
+sub check_crash_no_args {
+    return if get_var('SKIP_KERNEL_DEBUGINFO');
+
+    # On transactional systems crash is run via podman, not installed natively;
+    # running it without arguments inside a container would probe the container's
+    # filesystem rather than the host's booted kernel, so skip in that case.
+    if (script_run('which crash') != 0) {
+        record_info('crash not installed natively', 'Skipping no-args crash check');
+        return;
+    }
+
+    my $out = script_output('echo exit | crash 2>&1', is_aarch64 ? 1200 : 800, proceed_on_failure => 1);
+    record_soft_failure 'bsc#1237855 - crash cannot auto-detect booted kernel without arguments'
+      unless $out =~ m/KERNEL:/;
 }
 
 # for bsc#1199326, we need to check if ~/bernhard/.ssh/id_rsa was not
