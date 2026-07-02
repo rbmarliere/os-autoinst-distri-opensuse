@@ -426,6 +426,22 @@ sub install_kotd {
     install_package("--recommends $devel_flavor", trup_continue => 1);
 }
 
+sub reinstall_kotd {
+    my ($self, $repo) = @_;
+    my $kernel_flavor = get_kernel_flavor;
+    my $devel_flavor = get_kernel_devel_flavor;
+    my $src_flavor = get_kernel_source_flavor;
+
+    # Remove any locks that might interfere with reinstallation
+    zypper_call("rl $kernel_flavor $devel_flavor $src_flavor");
+
+    # Remove old repositories
+    zypper_call("rr KOTD");
+    zypper_call("rr kernel-update-0");
+
+    install_kotd($repo);
+}
+
 sub update_kgraft_under_load {
     my ($self, $incident_klp_pkg, $repo, $incident_id) = @_;
 
@@ -587,6 +603,9 @@ sub run {
     elsif (get_var('NVIDIA_FIRST_RELEASE')) {
         $self->first_nvidia_release($repo);
     }
+    elsif (get_var('REINSTALL_KOTD')) {
+        $self->reinstall_kotd($repo);
+    }
     elsif (get_var('KOTD_REPO')) {
         install_kotd($repo);
     }
@@ -659,6 +678,14 @@ Install the kernel version set in this variable instead of the latest update.
 
 Repository URL for installing kernel of the day packages. Update system and
 install new kernel using the simplified installation method.
+
+=head2 REINSTALL_KOTD
+
+Reinstall the KOTD kernel from KOTD_REPO onto a system that already has a KOTD
+kernel installed (e.g. a published image). Removes the kernel lock and any
+leftover KOTD/kernel-update repositories first so a newly specified KOTD_REPO
+takes effect, then performs a normal KOTD installation. Must be used together
+with KOTD_REPO.
 
 =head2 NO_DISABLE_REPOS
 
