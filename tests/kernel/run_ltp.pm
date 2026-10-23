@@ -381,6 +381,18 @@ sub upload_oprofile {
     select_console($old_console) if defined($old_console);
 }
 
+sub upload_hangdump {
+    my ($self) = @_;
+    my $pid = $self->{hangdump_pid};
+
+    # Stop the watchdog if it is still sleeping; a dump is only written for
+    # tests which ran longer than LTP_HANGDUMP_DELAY.
+    script_run("kill $pid 2>/dev/null; wait $pid 2>/dev/null; true");
+    delete $self->{hangdump_pid};
+    upload_logs($self->{hangdump_log}, failok => 1)
+      if script_run("test -s $self->{hangdump_log}") == 0;
+}
+
 sub pre_run_hook {
     my ($self) = @_;
 
@@ -428,6 +440,14 @@ sub run {
         $self->{oprofile_pid} = background_script_run('operf -ls -d /tmp/ltp_oprofile &>/tmp/ltp_oprofile.txt');
     }
 
+    if (check_var_array('LTP_DEBUG', 'hangdump')) {
+        my $delay = get_var('LTP_HANGDUMP_DELAY', 540);
+        $self->{hangdump_log} = "/tmp/ltp_hangdump-$test->{name}.txt";
+        script_run("rm -f $self->{hangdump_log}");
+        assert_script_run('test -x /tmp/ltp_hangdump.sh || { curl -sS -o /tmp/ltp_hangdump.sh ' . data_url('ltp/ltp_hangdump.sh') . ' && chmod +x /tmp/ltp_hangdump.sh; }');
+        $self->{hangdump_pid} = background_script_run("/tmp/ltp_hangdump.sh $delay $self->{hangdump_log}");
+    }
+
     if (is_serial_terminal) {
         script_run("echo '$klog_stamp' > /dev/kmsg");
         # SLE11-SP4 doesn't support ignore_loglevel, due that stamp is not printed in console
@@ -448,6 +468,7 @@ sub run {
         $env{retval} = $1;
         $self->upload_oprofile() if defined($self->{oprofile_pid});
         $self->upload_tcpdump() if defined($self->{tcpdump_pid});
+        $self->upload_hangdump() if defined($self->{hangdump_pid});
     }
 
     push(@{$test_result_export->{results}}, $result_export);
@@ -567,6 +588,17 @@ Comma separated list of debug features to enable during test run.
 - C<tcpdump>: Capture all packets sent or received during each test.
 - C<supportconfig>: Run supportconfig after boot and before shutdown.
 - C<strace>: Run tests with strace and upload log of each test.
+- C<hangdump>: Dump blocked tasks (sysrq-w and their kernel stacks), sunrpc
+  client tasks and transports, nfsd and NFS mount state, and meminfo if a test
+  is still running after C<LTP_HANGDUMP_DELAY> seconds, and upload the dump.
+  The dump is taken inside the SUT before LTP's own timeout kills the test
+  processes, unlike C<tasktrace> which runs after the test has ended.
+
+=head2 LTP_HANGDUMP_DELAY
+
+Seconds after test start at which C<LTP_DEBUG=hangdump> takes its dump
+(default 540). Set it below the test's LTP timeout, e.g. 540 for nfs06 with its
+10 minute timeout.
 
 =head2 LTP_MIN_UPTIME
 
