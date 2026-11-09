@@ -1,4 +1,5 @@
 local disk_id = '{{INSTALL_DISK_WWN}}';
+local transactional = '{{TRANSACTIONAL}}';
 local partitions_config = {
   partitions: [{ generate: 'default' }],
   [if disk_id != '' then 'search']: '/dev/disk/by-id/' + disk_id
@@ -6,7 +7,8 @@ local partitions_config = {
 {
   product: {
     id: '{{AGAMA_PRODUCT_ID}}',
-    registrationCode: '{{SCC_REGCODE}}'
+    registrationCode: '{{SCC_REGCODE}}',
+    [if transactional == '1' then 'mode']: 'immutable',
   },
   bootloader: {
     timeout: 45,
